@@ -4,18 +4,22 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy --minify",
+    "db:inspect": "bun scripts/inspect.ts",
+    "db:reset": "bun scripts/reset.ts",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "drizzle-orm": "^0.45.2",
     "hono": "^4.12.25",
+    "jose": "^6.2.3",
     "jsonwebtoken": "^9.0.3",
     "nanoid": "^5.1.11",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260613.1",
+    "@types/node": "^25.9.3",
     "drizzle-kit": "^0.31.10",
     "wrangler": "^4.100.0"
   }

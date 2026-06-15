@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { Bindings } from "../lib/types";
+import { Bindings , Variables} from "../lib/types";
 
 import {
   signup,
@@ -8,13 +8,14 @@ import {
   logout,
   me,
 } from "../services/auth";
+import { authMiddleware } from "../middleware/auth";
 
-const auth = new Hono<{ Bindings: Bindings }>();
+const auth = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 auth.post("/signup", signup);
 auth.post("/login", login);
 auth.post("/refresh", refresh);
 auth.post("/logout", logout);
-auth.get("/me", me);
+auth.get("/me", authMiddleware,  me);
 
 export default auth;
