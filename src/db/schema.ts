@@ -1,4 +1,4 @@
-import { sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, index } from "drizzle-orm/sqlite-core";
 import { relations } from "drizzle-orm";
 
 export const users = sqliteTable("users", {
@@ -16,36 +16,56 @@ export const contexts = sqliteTable("contexts", {
   parentId: text("parent_id"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
-});
+}, (t) => [
+  index("idx_contexts_user").on(t.userId),
+  index("idx_contexts_key").on(t.key),
+  index("idx_contexts_user_key").on(t.userId, t.key),
+]);
 
 export const contextRelations = sqliteTable("context_relations", {
   id: text("id").primaryKey(),
   sourceId: text("source_id").notNull(),
   targetId: text("target_id").notNull(),
-  type: text("type").notNull(), // related_to | depends_on | references | derived_from
+  type: text("type").notNull(),
   createdAt: text("created_at").notNull(),
 });
 
 export const sessions = sqliteTable("sessions", {
   id: text("id").primaryKey(),
   userId: text("user_id").notNull(),
-  date: text("date").notNull(), // YYYY-MM-DD
+  date: text("date").notNull(),
   content: text("content").notNull(),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
-});
+}, (t) => [
+  index("idx_sessions_user_date").on(t.userId, t.date),
+]);
 
-// --- Drizzle Relations ---
+export const dumps = sqliteTable("dumps", {
+  id: text("id").primaryKey(),
+  contextId: text("context_id").notNull(),
+  userId: text("user_id").notNull(),
+  content: text("content").notNull(),
+  createdAt: text("created_at").notNull(),
+}, (t) => [
+  index("idx_dumps_context").on(t.contextId),
+  index("idx_dumps_user").on(t.userId),
+  index("idx_dumps_context_created").on(t.contextId, t.createdAt),
+]);
+
+// --- Relations ---
 
 export const usersRelations = relations(users, ({ many }) => ({
   contexts: many(contexts),
   sessions: many(sessions),
+  dumps: many(dumps),
 }));
 
 export const contextsRelations = relations(contexts, ({ one, many }) => ({
   user: one(users, { fields: [contexts.userId], references: [users.id] }),
   parent: one(contexts, { fields: [contexts.parentId], references: [contexts.id] }),
   children: many(contexts),
+  dumps: many(dumps),
   outgoing: many(contextRelations, { relationName: "source" }),
   incoming: many(contextRelations, { relationName: "target" }),
 }));
@@ -57,4 +77,9 @@ export const contextRelationsRelations = relations(contextRelations, ({ one }) =
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
   user: one(users, { fields: [sessions.userId], references: [users.id] }),
+}));
+
+export const dumpsRelations = relations(dumps, ({ one }) => ({
+  context: one(contexts, { fields: [dumps.contextId], references: [contexts.id] }),
+  user: one(users, { fields: [dumps.userId], references: [users.id] }),
 }));
