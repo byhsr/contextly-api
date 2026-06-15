@@ -2,21 +2,17 @@ import { Hono } from "hono";
 import { createDb } from "./db";
 import {Bindings} from "./lib/types"
 import { sql } from "drizzle-orm";
+import auth from "./routes/auth";
+import contexts from "./routes/contexts";
+
 
 const app = new Hono<{ Bindings: Bindings }>();
 
 
-app.get("/health", async (c) => {
-  const db = createDb(c.env.DB);
+app.get("/health", async (c) => c.json({ ok: true,}))
+app.route("/auth", auth);
+app.route("/contexts", contexts);
 
-  const result = await db.run(
-    sql`SELECT COUNT(*) as count FROM users`
-  );
+export default app;
 
-  return c.json({
-    ok: true,
-    result,
-  });
-});
 
-export default app
