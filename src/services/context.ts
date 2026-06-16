@@ -1,5 +1,5 @@
 import { Context } from "hono";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, like } from "drizzle-orm";
 import { createDb } from "../db";
 import { contexts } from "../db/schema";
 
@@ -144,4 +144,23 @@ export async function getContextTree(c: Context) {
   }
 
   return c.json({ ok: true, tree: map.get(id) });
+}
+
+export async function searchContexts(c: Context) {
+  const db = createDb(c.env.DB);
+  const userId = c.get("userId");
+  const q = c.req.query("q")?.trim();
+
+  if (!q) {
+    return c.json({ ok: false, message: "q is required" }, 400);
+  }
+
+  const results = await db
+    .select()
+    .from(contexts)
+    .where(and(eq(contexts.userId, userId), like(contexts.key, `${q}%`)))
+    .limit(10)
+    .all();
+
+  return c.json({ ok: true, contexts: results });
 }
