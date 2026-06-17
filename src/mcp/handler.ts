@@ -319,17 +319,18 @@ server.registerTool(
   }
 );
 
-// --- create session ---
+// --- upsert session ---
 server.registerTool(
-  "create_session",
+  "upsert_session",
   {
-    description: "Create a session for today. Fails if one already exists — use update_session instead.",
+    description: "Create or update today's session. Safe to call without checking if one exists.",
     inputSchema: z.object({
       content: z.string().min(1).describe("Session content for today"),
     }),
   },
   async ({ content }) => {
     const date = new Date().toISOString().split("T")[0];
+    const now = new Date().toISOString();
 
     const existing = await db
       .select()
@@ -338,13 +339,15 @@ server.registerTool(
       .get();
 
     if (existing) {
-      return {
-        content: [{ type: "text", text: "Session already exists for today. Use update_session to modify it." }],
-        isError: true,
-      };
+      const updated = await db
+        .update(sessions)
+        .set({ content, updatedAt: now })
+        .where(and(eq(sessions.userId, userId), eq(sessions.date, date)))
+        .returning()
+        .get();
+      return { content: [{ type: "text", text: JSON.stringify(updated, null, 2) }] };
     }
 
-    const now = new Date().toISOString();
     const session = {
       id: globalThis.crypto.randomUUID(),
       userId,
@@ -353,53 +356,10 @@ server.registerTool(
       createdAt: now,
       updatedAt: now,
     };
-
     await db.insert(sessions).values(session);
-
-    return {
-      content: [{ type: "text", text: JSON.stringify(session, null, 2) }],
-    };
+    return { content: [{ type: "text", text: JSON.stringify(session, null, 2) }] };
   }
 );
-
-// --- update session ---
-server.registerTool(
-  "update_session",
-  {
-    description: "Update today's existing session content. Fails if no session exists for today — use create_session instead.",
-    inputSchema: z.object({
-      content: z.string().min(1).describe("New session content for today"),
-    }),
-  },
-  async ({ content }) => {
-    const date = new Date().toISOString().split("T")[0];
-
-    const existing = await db
-      .select()
-      .from(sessions)
-      .where(and(eq(sessions.userId, userId), eq(sessions.date, date)))
-      .get();
-
-    if (!existing) {
-      return {
-        content: [{ type: "text", text: "No session found for today. Use create_session to create one." }],
-        isError: true,
-      };
-    }
-
-    const updated = await db
-      .update(sessions)
-      .set({ content, updatedAt: new Date().toISOString() })
-      .where(and(eq(sessions.userId, userId), eq(sessions.date, date)))
-      .returning()
-      .get();
-
-    return {
-      content: [{ type: "text", text: JSON.stringify(updated, null, 2) }],
-    };
-  }
-);
-
   return server;
 }
 
