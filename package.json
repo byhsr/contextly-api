@@ -9,6 +9,7 @@
     "cf-typegen": "wrangler types --env-interface CloudflareBindings"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.10.1",
     "drizzle-orm": "^0.45.2",
