@@ -7,11 +7,15 @@ export async function createDump(c: Context) {
   const db = createDb(c.env.DB);
   const userId = c.get("userId");
   const { contextId } = c.req.param();
-  const { content } = await c.req.json();
 
-  if (!content) return c.json({ ok: false, message: "content is required" }, 400);
+  const body = await c.req.json().catch(() => null);
+  if (!body) return c.json({ ok: false, message: "Invalid JSON body" }, 400);
 
-  // verify context belongs to user
+  const { content } = body;
+  if (!content || typeof content !== "string" || !content.trim()) {
+    return c.json({ ok: false, message: "content is required" }, 400);
+  }
+
   const context = await db
     .select()
     .from(contexts)
@@ -36,7 +40,12 @@ export async function getDumps(c: Context) {
   const db = createDb(c.env.DB);
   const userId = c.get("userId");
   const { contextId } = c.req.param();
-  const n = Number(c.req.query("n") ?? 1);
+
+  const rawN = c.req.query("n");
+  const n = rawN !== undefined ? Number(rawN) : 1;
+  if (!Number.isInteger(n) || n < 1 || n > 100) {
+    return c.json({ ok: false, message: "n must be an integer between 1 and 100" }, 400);
+  }
 
   const context = await db
     .select()
