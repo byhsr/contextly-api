@@ -32,19 +32,43 @@ export function registerContextTools(server: any, db: any, userId: string) {
     return { content: [{ type: "text", text: JSON.stringify(results, null, 2) }] };
   });
 
-  server.registerTool("create_context", { description: "Create a new context node", inputSchema: z.object({ key: z.string(), value: z.string(), parentId: z.string().optional() }) }, async ({ key, value, parentId }: { key: string; value: string; parentId?: string }) => {
-    const now = new Date().toISOString();
-    const context = { id: globalThis.crypto.randomUUID(), userId, key, value, parentId: parentId ?? null, createdAt: now, updatedAt: now };
-    await db.insert(contexts).values(context);
-    return { content: [{ type: "text", text: JSON.stringify(context, null, 2) }] };
-  });
+server.registerTool("create_context", {
+  description: "Create a new context node",
+  inputSchema: z.object({
+    key: z.string(),
+    value: z.string(),
+    parentId: z.string().optional(),
+    actorType: z.enum(["USER", "AGENT", "SYSTEM"]).default("AGENT"),
+    actorId: z.string().optional(),
+  })
+}, async ({ key, value, parentId, actorType, actorId }: { key: string; value: string; parentId?: string; actorType: string; actorId?: string }) => {
+  const now = new Date().toISOString();
+  const context = { id: globalThis.crypto.randomUUID(), userId, actorType, actorId: actorId ?? userId, key, value, parentId: parentId ?? null, createdAt: now, updatedAt: now };
+  await db.insert(contexts).values(context);
+  return { content: [{ type: "text", text: JSON.stringify(context, null, 2) }] };
+});
 
-  server.registerTool("update_context", { description: "Update an existing context node", inputSchema: z.object({ id: z.string(), key: z.string().optional(), value: z.string().optional() }) }, async ({ id, key, value }: { id: string; key?: string; value?: string }) => {
-    const existing = await db.select().from(contexts).where(and(eq(contexts.id, id), eq(contexts.userId, userId))).get();
-    if (!existing) return { content: [{ type: "text", text: "Context not found" }], isError: true };
-    const updated = await db.update(contexts).set({ ...(key && { key }), ...(value && { value }), updatedAt: new Date().toISOString() }).where(and(eq(contexts.id, id), eq(contexts.userId, userId))).returning().get();
-    return { content: [{ type: "text", text: JSON.stringify(updated, null, 2) }] };
-  });
+server.registerTool("update_context", {
+  description: "Update an existing context node",
+  inputSchema: z.object({
+    id: z.string(),
+    key: z.string().optional(),
+    value: z.string().optional(),
+    actorType: z.enum(["USER", "AGENT", "SYSTEM"]).optional(),
+    actorId: z.string().optional(),
+  })
+}, async ({ id, key, value, actorType, actorId }: { id: string; key?: string; value?: string; actorType?: string; actorId?: string }) => {
+  const existing = await db.select().from(contexts).where(and(eq(contexts.id, id), eq(contexts.userId, userId))).get();
+  if (!existing) return { content: [{ type: "text", text: "Context not found" }], isError: true };
+  const updated = await db.update(contexts).set({
+    ...(key && { key }),
+    ...(value && { value }),
+    ...(actorType && { actorType }),
+    ...(actorId && { actorId }),
+    updatedAt: new Date().toISOString()
+  }).where(and(eq(contexts.id, id), eq(contexts.userId, userId))).returning().get();
+  return { content: [{ type: "text", text: JSON.stringify(updated, null, 2) }] };
+});
 
   server.registerTool("delete_context", { description: "Delete a context node", inputSchema: z.object({ id: z.string() }) }, async ({ id }: { id: string }) => {
     const existing = await db.select().from(contexts).where(and(eq(contexts.id, id), eq(contexts.userId, userId))).get();
