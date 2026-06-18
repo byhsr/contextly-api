@@ -60,6 +60,7 @@ export const contexts = sqliteTable(
     index("idx_contexts_user").on(t.userId),
     index("idx_contexts_key").on(t.key),
     index("idx_contexts_user_key").on(t.userId, t.key),
+    index("idx_sessions_scope").on(t.scopeId),
   ]
 );
 
@@ -83,6 +84,7 @@ export const sessions = sqliteTable(
   },
   (t) => [
     index("idx_sessions_user_date").on(t.userId, t.date),
+    index("idx_sessions_scope").on(t.scopeId),
   ]
 );
 
@@ -134,6 +136,7 @@ export const dumps = sqliteTable(
   (t) => [
     index("idx_dumps_context").on(t.contextId),
     index("idx_dumps_user").on(t.userId),
+    index("idx_sessions_scope").on(t.scopeId),
     index("idx_dumps_context_created").on(t.contextId, t.createdAt),
   ]
 );
