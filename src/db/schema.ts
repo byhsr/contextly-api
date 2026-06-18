@@ -11,11 +11,29 @@ export const users = sqliteTable("users", {
   }>(),
 });
 
+export const userProfiles = sqliteTable("user_profiles", {
+  userId: text("user_id").primaryKey(),
+
+  timezone: text("timezone"),
+
+  displayName: text("display_name"),
+
+  preferences: text("preferences", { mode: "json" })
+    .$type<Record<string, unknown>>(),
+
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
 export const contexts = sqliteTable(
   "contexts",
   {
     id: text("id").primaryKey(),
     userId: text("user_id").notNull(),
+    actorType: text("actor_type", {
+      enum: ["USER", "AGENT", "SYSTEM"],
+    }).notNull(),
+    actorId: text("actor_id").notNull(),
     key: text("key").notNull(),
     value: text("value").notNull(),
     parentId: text("parent_id"),
@@ -89,6 +107,10 @@ export const dumps = sqliteTable(
     id: text("id").primaryKey(),
     contextId: text("context_id").notNull(),
     userId: text("user_id").notNull(),
+    actorType: text("actor_type", {
+      enum: ["USER", "AGENT", "SYSTEM"],
+    }).notNull(),
+    actorId: text("actor_id").notNull(),
     content: text("content").notNull(),
     createdAt: text("created_at").notNull(),
   },
