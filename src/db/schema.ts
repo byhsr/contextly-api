@@ -6,9 +6,6 @@ export const users = sqliteTable("users", {
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   createdAt: text("created_at").notNull(),
-  meta: text("meta", { mode: "json" }).$type<{
-    timezone?: string;
-  }>(),
 });
 
 export const userProfiles = sqliteTable("user_profiles", {
@@ -25,11 +22,30 @@ export const userProfiles = sqliteTable("user_profiles", {
   updatedAt: text("updated_at").notNull(),
 });
 
+export const scopes = sqliteTable(
+  "scopes",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    
+    name: text("name").notNull(),
+    slug: text("slug").notNull(),
+
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (t) => [
+    index("idx_scopes_user").on(t.userId),
+    index("idx_scopes_user_slug").on(t.userId, t.slug),
+  ]
+);
+
 export const contexts = sqliteTable(
   "contexts",
   {
     id: text("id").primaryKey(),
     userId: text("user_id").notNull(),
+    scopeId: text("scope_id"),
     actorType: text("actor_type", {
       enum: ["USER", "AGENT", "SYSTEM"],
     }).notNull(),
@@ -107,6 +123,7 @@ export const dumps = sqliteTable(
     id: text("id").primaryKey(),
     contextId: text("context_id").notNull(),
     userId: text("user_id").notNull(),
+    scopeId: text("scope_id"),
     actorType: text("actor_type", {
       enum: ["USER", "AGENT", "SYSTEM"],
     }).notNull(),
@@ -124,10 +141,22 @@ export const dumps = sqliteTable(
 // --- Relations ---
 
 export const usersRelations = relations(users, ({ many }) => ({
+  scopes: many(scopes),
   contexts: many(contexts),
   sessions: many(sessions),
   dumps: many(dumps),
   sessionEntries: many(sessionEntries),
+}));
+
+export const scopesRelations = relations(scopes, ({ one, many }) => ({
+  user: one(users, {
+    fields: [scopes.userId],
+    references: [users.id],
+  }),
+
+  contexts: many(contexts),
+  sessions: many(sessions),
+  dumps: many(dumps),
 }));
 
 export const contextsRelations = relations(contexts, ({ one, many }) => ({
@@ -143,6 +172,10 @@ export const contextsRelations = relations(contexts, ({ one, many }) => ({
   dumps: many(dumps),
   outgoing: many(contextRelations, { relationName: "source" }),
   incoming: many(contextRelations, { relationName: "target" }),
+  scope: one(scopes, {
+  fields: [contexts.scopeId],
+  references: [scopes.id],
+}),
 }));
 
 export const contextRelationsRelations = relations(
@@ -169,6 +202,10 @@ export const sessionsRelations = relations(
       references: [users.id],
     }),
     entries: many(sessionEntries),
+    scope: one(scopes, {
+  fields: [sessions.scopeId],
+  references: [scopes.id],
+}),
   })
 );
 
@@ -191,6 +228,10 @@ export const dumpsRelations = relations(dumps, ({ one }) => ({
     fields: [dumps.contextId],
     references: [contexts.id],
   }),
+  scope: one(scopes, {
+  fields: [dumps.scopeId],
+  references: [scopes.id],
+}),
   user: one(users, {
     fields: [dumps.userId],
     references: [users.id],
