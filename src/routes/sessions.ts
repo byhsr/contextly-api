@@ -1,13 +1,10 @@
 import { Hono } from "hono";
-import { Bindings, Variables } from "hono/types";
-import {get, create , update} from "../services/sessions"
+import { get, createEntry, getEntries } from "../services/sessions";
 
+const sess = new Hono();
 
-const sess = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+sess.get("/",           get);           // GET  /sessions?n=7  → sessions + entries
+sess.get("/entries",    getEntries);    // GET  /sessions/entries?limit=20
+sess.post("/entries",   createEntry);   // POST /sessions/entries
 
-sess.get("/read", get);
-sess.post("/create", create);
-sess.patch("/update", update);
-
-
-export default sess
+export default sess;

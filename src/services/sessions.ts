@@ -92,11 +92,11 @@ export async function createEntry(c: Context) {
     type: EntryType;
     content: string;
     tags?: string[];
-    actorType?: "user" | "agent";
+    actorType?: "USER" | "AGENT" | "SYSTEM";
     actorId?: string;
   }>();
 
-  const { type, content, tags = [], actorType = "user", actorId = userId } = body;
+  const { type, content, tags = [], actorType = "USER", actorId = userId } = body;
 
   if (!type || !content) {
     return c.json({ ok: false, message: "type and content are required" }, 400);
@@ -108,22 +108,22 @@ export async function createEntry(c: Context) {
   }
 
   const user = await db.select().from(users).where(eq(users.id, userId)).get();
-  const date = getLocalDate(user?.timezone);
+  const date = getLocalDate();
 
   const session = await resolveOrCreateSession(db, userId, date);
 
   const now = new Date().toISOString();
   const entry = {
-    id: globalThis.crypto.randomUUID(),
-    sessionId: session.id,
-    userId,
-    actorType,
-    actorId,
-    type,
-    content,
-    tags: JSON.stringify(tags),
-    createdAt: now,
-  };
+  id: globalThis.crypto.randomUUID(),
+  sessionId: session.id,
+  userId,
+  actorType,
+  actorId,
+  type,
+  content,
+  tags,  
+  createdAt: now,
+};
 
   await db.insert(sessionEntries).values(entry);
 
