@@ -6,6 +6,7 @@ import { contexts, dumps, sessions, sessionEntries, users } from "../db/schema";
 import {registerSessionTools} from "./tool/sessions"
 import {registerDumpTools} from "./tool/dumps"
 import {registerContextTools} from "./tool/contexts"
+import {registerMemoryTools} from "./tool/memory"
 
 export function createMcpServer(db: ReturnType<typeof createDb>, userId: string) {
   const server = new McpServer({
@@ -17,6 +18,7 @@ export function createMcpServer(db: ReturnType<typeof createDb>, userId: string)
  registerContextTools(server, db, userId);
  registerDumpTools(server, db, userId);
  registerSessionTools(server, db, userId);
+ registerMemoryTools(server, db, userId);
   return server;
 }
 
