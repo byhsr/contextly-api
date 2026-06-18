@@ -2,7 +2,35 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { eq, and, like, desc, inArray } from "drizzle-orm";
 import { createDb } from "../db";
-import { contexts, dumps, sessions , users } from "../db/schema";
+import { contexts, dumps, sessions, sessionEntries, users } from "../db/schema";
+import {registerSessionTools} from "./tool/sessions"
+
+
+async function resolveOrCreateSession(
+  db: any,
+  userId: string,
+  date: string
+) {
+  const existing = await db
+    .select()
+    .from(sessions)
+    .where(and(eq(sessions.userId, userId), eq(sessions.date, date)))
+    .get();
+
+  if (existing) return existing;
+
+  const now = new Date().toISOString();
+  const session = {
+    id: globalThis.crypto.randomUUID(),
+    userId,
+    scopeId: null,
+    date,
+    createdAt: now,
+    updatedAt: now,
+  };
+  await db.insert(sessions).values(session);
+  return session;
+}
 
 export function createMcpServer(db: ReturnType<typeof createDb>, userId: string) {
   const server = new McpServer({
@@ -291,83 +319,9 @@ server.registerTool(
   }
 );
 
-// --- get sessions ---
-server.registerTool(
-  "get_sessions",
-  {
-    description: "Get sessions for the last N days (most recent first)",
-    inputSchema: z.object({
-      n: z.number().int().min(1).max(365).default(7).describe("Number of past days to fetch sessions for"),
-    }),
-  },
-  async ({ n }) => {
-    const dates = Array.from({ length: n }, (_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      return d.toISOString().split("T")[0];
-    });
-
-    const results = await db
-      .select()
-      .from(sessions)
-      .where(and(eq(sessions.userId, userId), inArray(sessions.date, dates)))
-      .all();
-
-    return {
-      content: [{ type: "text", text: JSON.stringify(results, null, 2) }],
-    };
-  }
-);
-
-// --- upsert session ---
-server.registerTool(
-  "upsert_session",
-  {
-    description: "Create or update today's session. Safe to call without checking if one exists.",
-    inputSchema: z.object({
-      content: z.string().min(1).describe("Session content for today"),
-    }),
-  },
-  async ({ content }) => {
-    // at the top of upsert_session / get_sessions handler
-const user = await db
-  .select()
-  .from(users)
-  .where(eq(users.id, userId))
-  .get();
-
-const date = getLocalDate(user?.timezone);
-    const now = new Date().toISOString();
-
-    const existing = await db
-      .select()
-      .from(sessions)
-      .where(and(eq(sessions.userId, userId), eq(sessions.date, date)))
-      .get();
-
-    if (existing) {
-      const updated = await db
-        .update(sessions)
-        .set({ content, updatedAt: now })
-        .where(and(eq(sessions.userId, userId), eq(sessions.date, date)))
-        .returning()
-        .get();
-      return { content: [{ type: "text", text: JSON.stringify(updated, null, 2) }] };
-    }
-
-    const session = {
-      id: globalThis.crypto.randomUUID(),
-      userId,
-      date,
-      content,
-      createdAt: now,
-      updatedAt: now,
-    };
-    await db.insert(sessions).values(session);
-    return { content: [{ type: "text", text: JSON.stringify(session, null, 2) }] };
-  }
-);
+ registerSessionTools(server, db, userId);
   return server;
 }
+
 
 
