@@ -19,7 +19,7 @@ export async function getContexts(c: Context) {
 export async function createContext(c: Context) {
   const db = createDb(c.env.DB);
   const userId = c.get("userId");
-  const { key, value, parentId } = await c.req.json();
+  const { key, value, parentId, actorType = "USER", actorId = userId } = await c.req.json();
 
   if (!key || !value) {
     return c.json({ ok: false, message: "key and value are required" }, 400);
@@ -29,6 +29,8 @@ export async function createContext(c: Context) {
   const context = {
     id: globalThis.crypto.randomUUID(),
     userId,
+    actorType,
+    actorId,
     key,
     value,
     parentId: parentId ?? null,
@@ -37,7 +39,6 @@ export async function createContext(c: Context) {
   };
 
   await db.insert(contexts).values(context);
-
   return c.json({ ok: true, context }, 201);
 }
 
@@ -45,7 +46,7 @@ export async function updateContext(c: Context) {
   const db = createDb(c.env.DB);
   const userId = c.get("userId");
   const { id } = c.req.param();
-  const { key, value } = await c.req.json();
+  const { key, value, actorType, actorId } = await c.req.json();
 
   const existing = await db
     .select()
@@ -62,6 +63,8 @@ export async function updateContext(c: Context) {
     .set({
       ...(key && { key }),
       ...(value && { value }),
+      ...(actorType && { actorType }),
+      ...(actorId && { actorId }),
       updatedAt: new Date().toISOString(),
     })
     .where(and(eq(contexts.id, id), eq(contexts.userId, userId)))

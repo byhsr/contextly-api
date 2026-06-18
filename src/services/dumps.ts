@@ -11,7 +11,7 @@ export async function createDump(c: Context) {
   const body = await c.req.json().catch(() => null);
   if (!body) return c.json({ ok: false, message: "Invalid JSON body" }, 400);
 
-  const { content } = body;
+  const { content, actorType = "USER", actorId = userId } = body;
   if (!content || typeof content !== "string" || !content.trim()) {
     return c.json({ ok: false, message: "content is required" }, 400);
   }
@@ -28,6 +28,8 @@ export async function createDump(c: Context) {
     id: globalThis.crypto.randomUUID(),
     contextId,
     userId,
+    actorType,
+    actorId,
     content,
     createdAt: new Date().toISOString(),
   };
