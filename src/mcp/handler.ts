@@ -2,7 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { eq, and, like, desc, inArray } from "drizzle-orm";
 import { createDb } from "../db";
-import { contexts, dumps,sessions  } from "../db/schema";
+import { contexts, dumps, sessions , users } from "../db/schema";
 
 export function createMcpServer(db: ReturnType<typeof createDb>, userId: string) {
   const server = new McpServer({
@@ -329,7 +329,14 @@ server.registerTool(
     }),
   },
   async ({ content }) => {
-    const date = new Date().toISOString().split("T")[0];
+    // at the top of upsert_session / get_sessions handler
+const user = await db
+  .select()
+  .from(users)
+  .where(eq(users.id, userId))
+  .get();
+
+const date = getLocalDate(user?.timezone);
     const now = new Date().toISOString();
 
     const existing = await db

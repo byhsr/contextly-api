@@ -6,6 +6,10 @@ export const users = sqliteTable("users", {
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   createdAt: text("created_at").notNull(),
+  meta: text("meta", { mode: "json" }).$type<{
+    timezone?: string;
+    // add more fields here as needed
+  }>(),
 });
 
 export const contexts = sqliteTable("contexts", {
@@ -33,12 +37,25 @@ export const contextRelations = sqliteTable("context_relations", {
 export const sessions = sqliteTable("sessions", {
   id: text("id").primaryKey(),
   userId: text("user_id").notNull(),
+  scopeId: text("scope_id"),
   date: text("date").notNull(),
-  content: text("content").notNull(),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 }, (t) => [
   index("idx_sessions_user_date").on(t.userId, t.date),
+]);
+
+export const sessionEntries = sqliteTable("session_entries", {
+  id: text("id").primaryKey(),
+  sessionId: text("session_id").notNull(),
+  userId: text("user_id").notNull(),
+  type: text("type", { enum: ["MEMORY", "DECISION", "TASK", "NOTE" ] }),
+  content: text("content").notNull(),
+  tags: text("tags").notNull().default("[]"),
+  createdAt: text("created_at").notNull(),
+}, (t) => [
+  index("idx_entries_session").on(t.sessionId),
+  index("idx_entries_user_created").on(t.userId, t.createdAt),
 ]);
 
 export const dumps = sqliteTable("dumps", {
